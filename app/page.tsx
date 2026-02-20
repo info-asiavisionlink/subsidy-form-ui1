@@ -40,6 +40,7 @@ type EmpCount =
   | "100〜299"
   | "300以上";
 
+/** ★ここが超重要：キー名をUI/送信/型で完全一致させる */
 type FormDataJP = {
   mail: string;
   "会社名": string;
@@ -49,7 +50,7 @@ type FormDataJP = {
   "業種（大分類）": Industry | "";
   "従業員数": EmpCount | "";
   "資本金（円）": string; // 数字文字列（カンマ無し推奨）
-  "設立年月（YYYY-MM）": string; // YYYY-MM
+  "設立年（YYYY）": string; // YYYY
   "雇用保険加入（はい/いいえ）": YesNo | "";
 };
 
@@ -105,21 +106,25 @@ const initialData: FormDataJP = {
   "業種（大分類）": "",
   "従業員数": "",
   "資本金（円）": "",
-  "設立年月（YYYY-MM）": "",
+  "設立年（YYYY）": "",
   "雇用保険加入（はい/いいえ）": "",
 };
 
-function isYYYYMM(s: string) {
-  return /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
+/** YYYYのみ（例: 2021） */
+function isYYYY(s: string) {
+  const t = s.trim();
+  return /^(19|20)\d{2}$/.test(t);
 }
 
 function normalizeMoney(s: string) {
-  const zenkaku = s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+  const zenkaku = s.replace(/[０-９]/g, (c) =>
+    String.fromCharCode(c.charCodeAt(0) - 0xfee0)
+  );
   return zenkaku.replace(/,/g, "").replace(/\s+/g, "").trim();
 }
 
 function isEmailLike(s: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
 }
 
 export default function Page() {
@@ -144,7 +149,7 @@ export default function Page() {
       !!data["業種（大分類）"],
       !!data["従業員数"],
       normalizeMoney(data["資本金（円）"]).length > 0,
-      isYYYYMM(data["設立年月（YYYY-MM）"]),
+      isYYYY(data["設立年（YYYY）"]),
       !!data["雇用保険加入（はい/いいえ）"],
     ];
     const done = checks.filter(Boolean).length;
@@ -154,7 +159,8 @@ export default function Page() {
   const valid = progress.ok;
 
   const modeText = sending ? "MODE: SENDING" : "MODE: FORM";
-  const pulseText = banner.kind === "ok" ? "PULSE: OK" : banner.kind === "ng" ? "PULSE: NG" : "PULSE: IDLE";
+  const pulseText =
+    banner.kind === "ok" ? "PULSE: OK" : banner.kind === "ng" ? "PULSE: NG" : "PULSE: IDLE";
 
   async function onClear() {
     setData(initialData);
@@ -170,6 +176,10 @@ export default function Page() {
     const payload: FormDataJP = {
       ...data,
       "資本金（円）": normalizeMoney(data["資本金（円）"]),
+      "設立年（YYYY）": data["設立年（YYYY）"].trim(),
+      mail: data.mail.trim(),
+      "会社名": data["会社名"].trim(),
+      "市区町村": data["市区町村"].trim(),
     };
 
     try {
@@ -355,18 +365,20 @@ export default function Page() {
               <div className="help">数字で入力（カンマ不要）。</div>
             </div>
 
+            {/* ★ここ：設立年だけ */}
             <div className="field">
               <div className="labelRow">
-                <label>設立年月（YYYY-MM）</label>
+                <label>設立年（YYYY）</label>
                 <span className="req">必須</span>
               </div>
               <input
-                value={data["設立年月（YYYY-MM）"]}
-                onChange={(e) => set("設立年月（YYYY-MM）", e.target.value)}
-                placeholder="例：2021-04"
+                value={data["設立年（YYYY）"]}
+                onChange={(e) => set("設立年（YYYY）", e.target.value)}
+                placeholder="例：2021"
                 inputMode="numeric"
+                maxLength={4}
               />
-              <div className="help">形式はYYYY-MM。</div>
+              <div className="help">西暦4桁だけ入力。</div>
             </div>
 
             <div className="field">
